@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
 from sqlalchemy import create_engine, Column, Integer, String, Float, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -66,6 +66,45 @@ def create_order(order: OrderCreate):
     db.refresh(new_order)
     db.close()
     return fetch_converted_order(new_order)
+
+
+@app.put("/orders/{order_id}/", response_model=OrderResponse)
+def update_order(order_id: int, update_data: OrderUpdate):
+    db: Session = SessionLocal()
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        db.close()
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order.status = update_data.status
+    db.commit()
+    db.refresh(order)
+    db.close()
+    return fetch_converted_order(order)
+
+
+@app.get("/orders/{order_id}/", response_model=OrderResponse)
+def get_order(order_id: int):
+    db: Session = SessionLocal()
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        db.close()
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    response = fetch_converted_order(order)
+    db.close()
+    return response
+
+
+@app.get("/orders/", response_model=List[OrderResponse])
+def list_orders(status: Optional[OrderStatus] = Query(None)):
+    db: Session = SessionLocal()
+    query = db.query(Order)
+    if status:
+        query = query.filter(Order.status == status)
+    orders = query.all()
+    db.close()
+    return [fetch_converted_order(order) for order in orders]
 
 
 def fetch_converted_order(order: Order) -> OrderResponse:
