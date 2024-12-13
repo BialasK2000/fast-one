@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from pydantic import BaseModel, Field
+from typing import Optional
 from sqlalchemy import create_engine, Column, Integer, String, Float, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -29,3 +31,22 @@ class Order(Base):
 
 
 Base.metadata.create_all(bind=engine)
+
+
+class OrderCreate(BaseModel):
+    customer_name: str = Field(..., example="John Doe")
+    total_amount: float = Field(..., gt=0, example=100.0)
+    currency: str = Field(..., example="EUR")
+
+
+class OrderUpdate(BaseModel):
+    status: OrderStatus
+
+
+class OrderResponse(BaseModel):
+    id: int
+    customer_name: str
+    total_amount: float
+    converted_amount: Optional[float] = None
+    currency: str
+    status: OrderStatus
